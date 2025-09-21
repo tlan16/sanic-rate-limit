@@ -8,7 +8,7 @@ import aiohttp
 URL = "http://localhost:8000"
 POOL_SIZE = 50
 CONCURRENCY = 20
-DURATION_SECONDS = 3  # How long to run the benchmark
+DURATION_SECONDS = 5  # How long to run the benchmark
 
 
 def generate_random_client_id() -> str:
