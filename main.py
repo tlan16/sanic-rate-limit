@@ -58,10 +58,15 @@ def is_rate_limited(rate_counter: RateCounter, lookup_key: str) -> bool:
         )
     return False
 
+def compute_lookup_key(request: Request) -> str:
+    ## For demo purpose I'll use the http header "X-Forwarded-For" for requestor IP
+    lookup_key = request.headers.get("X-Forwarded-For", request.ip)
+    assert isinstance(lookup_key, str) and len(lookup_key) > 0
+    return lookup_key
+
 @app.get("/")
 async def hello_world(request: Request):
-    worker_id = os.getpid()
-    lookup_key = str(worker_id)
+    lookup_key = compute_lookup_key(request)
     rate_counter = cast(RateCounter, request.app.shared_ctx.rate_counter)
     reached_limit= is_rate_limited(
         rate_counter,
