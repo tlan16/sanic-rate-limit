@@ -14,6 +14,8 @@ Your tests need to include a benchmark up to 100 r/s (this should be minimum per
 
 > Rate limiting should be based on a keyword (ip would be the most common one, but I usually limit things like queries too)
 
+---
+
 First update [.env](/.env) file is you want, otherwise it's ready to be used without modification.
 
 **(a) with docker:**
