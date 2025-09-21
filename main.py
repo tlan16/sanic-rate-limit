@@ -1,15 +1,17 @@
 import os
 from functools import lru_cache
+from multiprocessing import Manager
+
 # noinspection PyProtectedMember
 from multiprocessing.managers import DictProxy
-from time import perf_counter, time
+from time import time
 from typing import cast
 
-from sanic import Sanic, Request
-from sanic.response import text, json
+from sanic import Request, Sanic
+from sanic.response import text
+from sanic.response.types import HTTPResponse
 
 from config import get_config
-from multiprocessing import Manager
 
 app = Sanic("rate_limit_demo")
 config = get_config()
@@ -20,8 +22,10 @@ RateCounter = DictProxy[str, tuple[LastRequestMinute, RequestCount]]
 
 rate_limit_fineness_seconds: float = 5.0
 
+
 def get_current_minute() -> int:
     return int(time() // 60)
+
 
 def is_rate_limited(rate_counter: RateCounter, lookup_key: str) -> bool:
     current_minutes = get_current_minute()
@@ -31,10 +35,7 @@ def is_rate_limited(rate_counter: RateCounter, lookup_key: str) -> bool:
     if dict_item is None:
         rate_counter[lookup_key] = (current_minutes, 1)
         if config.APP_DEBUG:
-            print(
-                f"Worker {lookup_key} initialized rate counter."
-                f" 1/{get_config().RATE_LIMIT_REQ_PER_MIN}"
-            )
+            print(f"Worker {lookup_key} initialized rate counter. 1/{get_config().RATE_LIMIT_REQ_PER_MIN}")
         return False
 
     last_request_minute, count = dict_item
@@ -44,7 +45,7 @@ def is_rate_limited(rate_counter: RateCounter, lookup_key: str) -> bool:
         reached_limit = new_count > config.RATE_LIMIT_REQ_PER_MIN
         if config.APP_DEBUG:
             print(
-                f"Worker {lookup_key} incremented rate counter to {new_count}," 
+                f"Worker {lookup_key} incremented rate counter to {new_count},"
                 f" reached_limit={reached_limit}."
                 f" {new_count}/{get_config().RATE_LIMIT_REQ_PER_MIN}"
             )
@@ -52,11 +53,9 @@ def is_rate_limited(rate_counter: RateCounter, lookup_key: str) -> bool:
 
     rate_counter[lookup_key] = (current_minutes, 1)
     if config.APP_DEBUG:
-        print(
-            f"Worker {lookup_key} reset rate counter for new minute"
-            f" 1/{get_config().RATE_LIMIT_REQ_PER_MIN}"
-        )
+        print(f"Worker {lookup_key} reset rate counter for new minute 1/{get_config().RATE_LIMIT_REQ_PER_MIN}")
     return False
+
 
 def compute_lookup_key(request: Request) -> str:
     ## For demo purpose I'll use the http header "X-Forwarded-For" for requestor IP
@@ -64,11 +63,12 @@ def compute_lookup_key(request: Request) -> str:
     assert isinstance(lookup_key, str) and len(lookup_key) > 0
     return lookup_key
 
+
 @app.get("/")
-async def hello_world(request: Request):
+async def hello_world(request: Request) -> HTTPResponse:
     lookup_key = compute_lookup_key(request)
     rate_counter = cast(RateCounter, request.app.shared_ctx.rate_counter)
-    reached_limit= is_rate_limited(
+    reached_limit = is_rate_limited(
         rate_counter,
         lookup_key,
     )
@@ -76,6 +76,7 @@ async def hello_world(request: Request):
         return text("429 Too Many Requests", status=429)
 
     return text("OK")
+
 
 @lru_cache(maxsize=1)
 def get_number_of_workers() -> int:
@@ -92,13 +93,13 @@ def get_number_of_workers() -> int:
 
 
 @app.main_process_start
-async def main_process_start(app_to_start: Sanic):
+async def main_process_start(app_to_start: Sanic) -> None:
     manager = Manager()
     rate_counter: RateCounter = manager.dict()
     app_to_start.shared_ctx.rate_counter = rate_counter
 
 
-def main():
+def main() -> None:
     app.run(
         workers=get_number_of_workers(),
     )

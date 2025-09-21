@@ -13,4 +13,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "aiohttp>=3.12.15",
+    "pyright[nodejs]>=1.1.405",
+    "ruff>=0.13.1",
 ]
