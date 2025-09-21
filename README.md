@@ -1,4 +1,4 @@
-First update .env file is you want, otherwise it's ready to be used without modification.
+First update [.env](/.env) file is you want, otherwise it's ready to be used without modification.
 
 **(a) with docker:**
 
