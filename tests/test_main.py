@@ -51,4 +51,4 @@ def make_request(client_id: str):
         return resp
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)
