@@ -101,6 +101,8 @@ async def main_process_start(app_to_start: Sanic) -> None:
 
 def main() -> None:
     app.run(
+        host="0.0.0.0",
+        port=8000,
         workers=get_number_of_workers(),
     )
 

@@ -1,11 +1,11 @@
 import random
 import string
+import sys
 import unittest
 import urllib.request
+from pathlib import Path
 from urllib.error import HTTPError
 from urllib.response import addinfourl
-
-from config import get_config
 
 
 def generate_random_client_id() -> str:
@@ -19,16 +19,18 @@ class TestMain(unittest.TestCase):
         self.assertEqual(response.status, 200)
 
     def test_rate_limited_with_one_client(self) -> None:
+        from config import get_config
+
         client_id = generate_random_client_id()
-        # assert first request is successful
-        self.assertEqual(make_request(client_id).status, 200)
-        # assert one of subsequent requests are rate limited
+        for _ in range(get_config().RATE_LIMIT_REQ_PER_MIN):
+            self.assertEqual(make_request(client_id).status, 200)
         with self.assertRaises(HTTPError) as cm:
-            for _ in range(1000):
-                make_request("test-client-01")
+            make_request(client_id)
         self.assertEqual(cm.exception.code, 429)
 
     def test_rate_limited_with_multiple_clients(self) -> None:
+        from config import get_config
+
         client_ids = tuple(generate_random_client_id() for i in range(10))
         for client_id in client_ids:
             # assert first request is successful
@@ -36,13 +38,13 @@ class TestMain(unittest.TestCase):
                 self.assertEqual(make_request(client_id).status, 200)
             # assert one of subsequent requests are rate limited
             with self.assertRaises(HTTPError) as cm:
-                make_request("test-client-01")
+                make_request(client_id)
             self.assertEqual(cm.exception.code, 429)
 
 
 def make_request(client_id: str) -> addinfourl:
     req = urllib.request.Request(
-        "http://127.0.0.1:8000",
+        "http://localhost:8000",
         headers={"X-Forwarded-For": client_id},
     )
     with urllib.request.urlopen(req) as resp:
@@ -50,4 +52,6 @@ def make_request(client_id: str) -> addinfourl:
 
 
 if __name__ == "__main__":
+    project_directory = Path(__file__).parents[1]
+    sys.path.append(str(project_directory.resolve()))
     unittest.main(verbosity=2)
