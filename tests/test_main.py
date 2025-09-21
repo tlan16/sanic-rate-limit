@@ -5,6 +5,8 @@ import urllib.request
 from urllib.error import HTTPError
 from urllib.response import addinfourl
 
+from config import get_config
+
 
 def generate_random_client_id() -> str:
     suffix = "".join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(16))
@@ -30,11 +32,11 @@ class TestMain(unittest.TestCase):
         client_ids = tuple(generate_random_client_id() for i in range(10))
         for client_id in client_ids:
             # assert first request is successful
-            self.assertEqual(make_request(client_id).status, 200)
+            for _ in range(get_config().RATE_LIMIT_REQ_PER_MIN):
+                self.assertEqual(make_request(client_id).status, 200)
             # assert one of subsequent requests are rate limited
             with self.assertRaises(HTTPError) as cm:
-                for _ in range(1000):
-                    make_request("test-client-01")
+                make_request("test-client-01")
             self.assertEqual(cm.exception.code, 429)
 
 
